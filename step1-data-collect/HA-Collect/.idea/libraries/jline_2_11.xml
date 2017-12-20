@@ -1,0 +1,14 @@
+<component name="libraryTable">
+  <library name="jline-2.11">
+    <CLASSES>
+      <root url="jar:///usr/lib/zookeeper/lib/jline-2.11.jar!/" />
+      <root url="jar:///usr/lib/zookeeper/lib/log4j-1.2.16.jar!/" />
+      <root url="jar:///usr/lib/zookeeper/lib/netty-3.10.5.Final.jar!/" />
+      <root url="jar:///usr/lib/zookeeper/lib/slf4j-api-1.7.5.jar!/" />
+      <root url="jar:///usr/lib/zookeeper/lib/slf4j-log4j12-1.7.5.jar!/" />
+      <root url="jar:///usr/lib/zookeeper/lib/slf4j-log4j12.jar!/" />
+    </CLASSES>
+    <JAVADOC />
+    <SOURCES />
+  </library>
+</component>
