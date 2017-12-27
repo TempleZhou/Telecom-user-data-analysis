@@ -1,4 +1,4 @@
-package test.zkp;
+package test.zkp.exec;
 
 import java.util.Arrays;
 import org.apache.zookeeper.KeeperException;
