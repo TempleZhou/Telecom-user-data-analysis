@@ -8,6 +8,7 @@ import org.apache.zookeeper.Watcher;
 import org.apache.zookeeper.ZooKeeper;
 import org.apache.zookeeper.data.Stat;
 
+import java.io.IOException;
 import java.util.Arrays;
 
 public class DataMonitor implements Watcher, StatCallback {
@@ -30,13 +31,12 @@ public class DataMonitor implements Watcher, StatCallback {
         this.znode = znode;
         this.chainedWatcher = chainedWatcher;
         this.listener = listener;
-        // Get things started by checking if the node exists. We are going
-        // to be completely event driven
         zk.exists(znode, true, this, null);
     }
 
     public interface DataMonitorListener {
-        void exists(byte data[]);
+        void exists(byte data[]) throws KeeperException, InterruptedException, IOException;
+
         void closing(int rc);
     }
 
@@ -92,10 +92,15 @@ public class DataMonitor implements Watcher, StatCallback {
                 return;
             }
         }
-        if ((b == null && b != prevData)
-                || (b != null && !Arrays.equals(prevData, b))) {
+        try {
             listener.exists(b);
-            prevData = b;
+        } catch (KeeperException e) {
+            e.printStackTrace();
+        } catch (InterruptedException e) {
+            e.printStackTrace();
+        } catch (IOException e) {
+            e.printStackTrace();
         }
+
     }
 }

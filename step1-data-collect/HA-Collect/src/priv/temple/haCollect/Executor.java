@@ -13,24 +13,28 @@ import java.util.List;
 
 public class Executor
         implements Watcher, Runnable, DataMonitor.DataMonitorListener {
-    String znode;
+    String znodeRootDir = "/keep-alive";
 
     DataMonitor dm;
 
     ZooKeeper zk;
 
-    String filename;
+    String nodeName;
 
-    String exec[];
+    String localhostName;
 
     Process child;
+    String hostPort;
 
     static final List<String> nodeList = Arrays.asList("collector1", "collector2", "collector3", "collector4");
     static final List<String> ftpList = Arrays.asList("ftp1", "ftp2", "ftp3", "ftp4");
 
-    public Executor(String hostPort, String znode) throws KeeperException, IOException {
+    public Executor(String hostPort, String nodeName, String localhostName) throws KeeperException, IOException {
+        this.nodeName = nodeName;
+        this.hostPort = hostPort;
+        this.localhostName = localhostName;
         zk = new ZooKeeper(hostPort, 3000, this);
-        dm = new DataMonitor(zk, znode, null, this);
+        dm = new DataMonitor(zk, znodeRootDir + "/" + nodeName, null, this);
     }
 
     /**
@@ -49,7 +53,7 @@ public class Executor
         for (String nodeName : nodeList) {
             try {
                 System.out.println("detecting " + nodeName + " status...");
-                new Thread(new Executor(hostPort, "/keep-alive/" + nodeName)).start();
+                new Thread(new Executor(hostPort, nodeName, localhostName)).start();
             } catch (Exception e) {
                 e.printStackTrace();
             }
@@ -102,17 +106,14 @@ public class Executor
         }
     }
 
-    public void exists(byte[] data) {
+    public void exists(byte[] data) throws KeeperException, InterruptedException, IOException {
         if (data == null) {
-            if (child != null) {
-                System.out.println("Killing process");
-                child.destroy();
-                try {
-                    child.waitFor();
-                } catch (InterruptedException e) {
-                }
-            }
-            child = null;
+            System.out.println("heartbeat:" + this.nodeName + " is dead...");
+
+            String leader = this.getLeader(this.getAliveList());
+            System.out.println("heartbeat:" + leader + " takeover " + this.nodeName + "'s jobs");
+            new Thread(new IntermediateExecutor(this.hostPort, this.znodeRootDir+"/"+this.nodeName, this.nodeName)).start();
+
         } else {
             if (child != null) {
                 System.out.println("Stopping child");
@@ -123,15 +124,33 @@ public class Executor
                     e.printStackTrace();
                 }
             }
-            System.out.println("node-status: " + new String(data));
+            this.getAliveList();
             try {
-                System.out.println("Starting child");
-                child = Runtime.getRuntime().exec("echo job");
-                new StreamWriter(child.getInputStream(), System.out);
-                new StreamWriter(child.getErrorStream(), System.err);
+                if (this.localhostName.equals(this.nodeName)) {
+                    child = Runtime.getRuntime().exec("echo executing " + this.nodeName + "'s jobs");
+                    new StreamWriter(child.getInputStream(), System.out);
+                    new StreamWriter(child.getErrorStream(), System.err);
+                }
+
             } catch (IOException e) {
                 e.printStackTrace();
             }
         }
+    }
+
+    public List<String> getAliveList() throws KeeperException, InterruptedException {
+        List<String> children = this.zk.getChildren(znodeRootDir, false);
+        System.out.print("alive nodes list: [");
+        for (String child : children) {
+            System.out.print(child+",");
+        }
+        System.out.println("]");
+        return children;
+    }
+
+    public String getLeader(List<String> children) {
+        //没做负载均衡, 随机取了个
+        int index = (int) (Math.random() * children.size());
+        return children.get(index);
     }
 }
